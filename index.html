@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NBA Live Win Probability</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 28%),
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 25%),
+                #0f172a;
+            color: white;
+            margin: 0;
+            padding: 36px;
+        }
+
+        .shell {
+            max-width: 1120px;
+            margin: auto;
+        }
+
+        .header {
+            margin-bottom: 22px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 40px;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            color: #cbd5e1;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 26px;
+            padding: 26px;
+            box-shadow: 0 22px 55px rgba(0,0,0,0.35);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .control-card {
+            background: #0f172a;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 20px;
+            padding: 18px;
+        }
+
+        .control-title {
+            font-weight: 800;
+            font-size: 17px;
+            margin-bottom: 12px;
+            color: #f8fafc;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            height: 44px;
+        }
+
+        select {
+            background: #334155;
+            color: white;
+            padding: 0 14px;
+            min-width: 220px;
+            flex: 1;
+            outline: none;
+        }
+
+        button {
+            background: #10b981;
+            color: white;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 0 16px;
+            transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+        }
+
+        button:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .secondary {
+            background: #475569;
+        }
+
+        .secondary:hover {
+            background: #334155;
+        }
+
+        .danger {
+            background: #ef4444;
+        }
+
+        .danger:hover {
+            background: #dc2626;
+        }
+
+        .speed-select {
+            flex: 0 0 160px;
+        }
+
+        .status {
+            margin-top: 12px;
+            color: #fbbf24;
+            font-size: 14px;
+            min-height: 18px;
+        }
+
+        .scoreboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            margin-top: 8px;
+        }
+
+        .team-card {
+            background: linear-gradient(145deg, #0f172a, #111c31);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 22px;
+            padding: 24px;
+            min-height: 190px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .team-top {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .logo-wrap {
+            width: 74px;
+            height: 74px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-wrap img {
+            width: 62px;
+            height: 62px;
+            object-fit: contain;
+        }
+
+        .abbr {
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .team-name {
+            font-size: 17px;
+            color: #dbeafe;
+            margin-top: 2px;
+        }
+
+        .record {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .score {
+            font-size: 58px;
+            font-weight: 900;
+            line-height: 1;
+            margin-top: 18px;
+            letter-spacing: -1px;
+        }
+
+        .prob-section {
+            margin-top: 28px;
+        }
+
+        .bar-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 20px;
+            font-weight: 900;
+        }
+
+        .bar-wrap {
+            background: #334155;
+            border-radius: 999px;
+            overflow: hidden;
+            height: 48px;
+            position: relative;
+        }
+
+        .bar {
+            background: linear-gradient(90deg, #10b981, #34d399);
+            height: 48px;
+            width: 50%;
+            transition: width 0.35s ease;
+            box-shadow: 0 0 24px rgba(16,185,129,0.35);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .info-card {
+            background: #0f172a;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 20px;
+            padding: 18px;
+        }
+
+        .info-title {
+            font-weight: 900;
+            margin-bottom: 12px;
+            color: #f8fafc;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat {
+            background: rgba(51, 65, 85, 0.65);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .last-play {
+            color: #cbd5e1;
+            line-height: 1.45;
+            font-size: 15px;
+        }
+
+        @media (max-width: 850px) {
+            body {
+                padding: 18px;
+            }
+
+            .controls-grid,
+            .scoreboard,
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 32px;
+            }
+
+            select {
+                width: 100%;
+            }
+
+            button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shell">
+        <div class="header">
+            <h1>NBA Live Win Probability</h1>
+            <div class="subtitle">Historical replay controls + live NBA mode with real-time neural network inference.</div>
+        </div>
+
+        <div class="panel">
+            <div class="controls-grid">
+                <div class="control-card">
+                    <div class="control-title">Historical Replay</div>
+
+                    <div class="control-row">
+                        <select id="gameSelect">
+                            <option>Loading historical games...</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row" style="margin-top: 12px;">
+                        <button onclick="startReplay()">Start</button>
+                        <button class="secondary" onclick="pauseReplay()">Pause</button>
+                        <button class="secondary" onclick="resumeReplay()">Resume</button>
+                        <button class="danger" onclick="restartReplay()">Restart</button>
+
+                        <select id="speedSelect" class="speed-select" onchange="setSpeed()">
+                            <option value="0.25">0.25x</option>
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="2">2x</option>
+                            <option value="4">4x</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <div class="control-title">Live NBA Games</div>
+
+                    <div class="control-row">
+                        <select id="liveGameSelect">
+                            <option>Loading live games...</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row" style="margin-top: 12px;">
+                        <button onclick="startLive()">Start Live</button>
+                        <button class="secondary" onclick="loadLiveGames()">Refresh</button>
+                    </div>
+
+                    <div class="status" id="liveStatus"></div>
+                </div>
+            </div>
+
+            <div class="scoreboard">
+                <div class="team-card">
+                    <div class="team-top">
+                        <div class="logo-wrap">
+                            <img id="awayLogo" src="" alt="">
+                        </div>
+
+                        <div>
+                            <div id="awayTeam" class="abbr">AWAY</div>
+                            <div id="awayName" class="team-name">Away Team</div>
+                            <div id="awayRecord" class="record">Record: N/A</div>
+                        </div>
+                    </div>
+
+                    <div class="score" id="awayScore">0</div>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-top">
+                        <div class="logo-wrap">
+                            <img id="homeLogo" src="" alt="">
+                        </div>
+
+                        <div>
+                            <div id="homeTeam" class="abbr">HOME</div>
+                            <div id="homeName" class="team-name">Home Team</div>
+                            <div id="homeRecord" class="record">Record: N/A</div>
+                        </div>
+                    </div>
+
+                    <div class="score" id="homeScore">0</div>
+                </div>
+            </div>
+
+            <div class="prob-section">
+                <div class="bar-labels">
+                    <div><span id="awayTeamProb">Away</span>: <span id="awayProb">50</span>%</div>
+                    <div><span id="homeTeamProb">Home</span>: <span id="homeProb">50</span>%</div>
+                </div>
+
+                <div class="bar-wrap">
+                    <div class="bar" id="homeBar"></div>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-title">Game State</div>
+
+                    <div class="stat-grid">
+                        <div class="stat">
+                            <div class="stat-label">Mode</div>
+                            <div class="stat-value" id="mode">None</div>
+                        </div>
+
+                        <div class="stat">
+                            <div class="stat-label">Period</div>
+                            <div class="stat-value" id="period">1</div>
+                        </div>
+
+                        <div class="stat">
+                            <div class="stat-label">Time Left</div>
+                            <div class="stat-value" id="timeLeft">48:00</div>
+                        </div>
+
+                        <div class="stat">
+                            <div class="stat-label">Replay Speed</div>
+                            <div class="stat-value" id="speedText">1x</div>
+                        </div>
+
+                        <div class="stat">
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value" id="pauseText">Running</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-title">Latest Update</div>
+                    <div class="last-play" id="lastPlay">Select a game mode.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        async function loadGames() {
+            const response = await fetch("/games");
+            const games = await response.json();
+
+            const select = document.getElementById("gameSelect");
+            select.innerHTML = "";
+
+            games.forEach(game => {
+                const option = document.createElement("option");
+                option.value = game.game_id;
+                option.textContent = game.label;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadLiveGames() {
+            const response = await fetch("/live-games");
+            const games = await response.json();
+
+            const select = document.getElementById("liveGameSelect");
+            const status = document.getElementById("liveStatus");
+            select.innerHTML = "";
+
+            if (games.length === 0) {
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = "No live games available right now";
+                select.appendChild(option);
+                status.textContent = "No active/today live games found from NBA scoreboard.";
+                return;
+            }
+
+            games.forEach(game => {
+                const option = document.createElement("option");
+                option.value = game.game_id;
+                option.textContent = game.label;
+                select.appendChild(option);
+            });
+
+            status.textContent = `${games.length} live/today game(s) found.`;
+        }
+
+        function resetDisplay(message) {
+            document.getElementById("awayScore").textContent = "0";
+            document.getElementById("homeScore").textContent = "0";
+            document.getElementById("awayProb").textContent = "50";
+            document.getElementById("homeProb").textContent = "50";
+            document.getElementById("homeBar").style.width = "50%";
+            document.getElementById("lastPlay").textContent = message;
+            document.getElementById("pauseText").textContent = "Running";
+        }
+
+        function startReplay() {
+            const gameId = document.getElementById("gameSelect").value;
+            resetDisplay("Starting historical replay...");
+            socket.emit("start_replay", { game_id: gameId });
+        }
+
+        function pauseReplay() {
+            socket.emit("pause_replay");
+            document.getElementById("pauseText").textContent = "Paused";
+        }
+
+        function resumeReplay() {
+            socket.emit("resume_replay");
+            document.getElementById("pauseText").textContent = "Running";
+        }
+
+        function restartReplay() {
+            resetDisplay("Restarting replay...");
+            socket.emit("restart_replay");
+        }
+
+        function setSpeed() {
+            const speed = document.getElementById("speedSelect").value;
+            socket.emit("set_speed", { speed: speed });
+            document.getElementById("speedText").textContent = `${speed}x`;
+        }
+
+        function startLive() {
+            const gameId = document.getElementById("liveGameSelect").value;
+
+            if (!gameId) {
+                document.getElementById("liveStatus").textContent = "No live game selected.";
+                return;
+            }
+
+            resetDisplay("Starting live game polling...");
+            socket.emit("start_live", { game_id: gameId });
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}:${String(s).padStart(2, "0")}`;
+        }
+
+        socket.on("win_probability_update", (data) => {
+            document.getElementById("mode").textContent = data.mode;
+
+            document.getElementById("awayTeam").textContent = data.away_team;
+            document.getElementById("homeTeam").textContent = data.home_team;
+            document.getElementById("awayName").textContent = data.away_name;
+            document.getElementById("homeName").textContent = data.home_name;
+
+            document.getElementById("awayRecord").textContent = `Record: ${data.away_record || "N/A"}`;
+            document.getElementById("homeRecord").textContent = `Record: ${data.home_record || "N/A"}`;
+
+            document.getElementById("awayTeamProb").textContent = data.away_team;
+            document.getElementById("homeTeamProb").textContent = data.home_team;
+
+            document.getElementById("awayLogo").src = data.away_logo;
+            document.getElementById("homeLogo").src = data.home_logo;
+
+            document.getElementById("awayScore").textContent = data.away_score;
+            document.getElementById("homeScore").textContent = data.home_score;
+
+            document.getElementById("awayProb").textContent = data.away_win_probability;
+            document.getElementById("homeProb").textContent = data.home_win_probability;
+
+            document.getElementById("homeBar").style.width = `${data.home_win_probability}%`;
+
+            document.getElementById("period").textContent = data.period;
+            document.getElementById("timeLeft").textContent = formatTime(data.seconds_remaining);
+
+            document.getElementById("lastPlay").textContent = data.last_play || "No update description";
+
+            document.getElementById("speedText").textContent = `${data.speed || 1}x`;
+            document.getElementById("pauseText").textContent = data.paused ? "Paused" : "Running";
+        });
+
+        socket.on("status_message", (data) => {
+            document.getElementById("liveStatus").textContent = data.message;
+        });
+
+        loadGames();
+        loadLiveGames();
+    </script>
+</body>
+</html>
